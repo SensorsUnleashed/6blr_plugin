@@ -26,6 +26,8 @@
 static void res_detect_gethandler(void *request, void *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_detect_eventhandler(void);
 
+PROCESS(su_detector, "Sensors Unleashed detector");
+
 static bool buf_reader(cmp_ctx_t *ctx, void *data, uint32_t limit) {
 	for(uint32_t i=0; i<limit; i++){
 		*((char*)data++) = *((char*)ctx->buf++);
@@ -58,7 +60,6 @@ struct detecters_s {
 	uip_ipaddr_t ipaddr;
 	char query[COAP_OBSERVER_QUERY_LEN];
 	int first;	//First time is active discovery of the node
-	//clock_time_t replytimeout;
 };
 typedef struct detecters_s detecters_t;
 
@@ -99,6 +100,7 @@ static void res_detect_gethandler(void *request, void *response, uint8_t *buffer
 
 				d->first = 1;
 				list_add(detectors_list, d);
+				process_poll(&su_detector);
 			}
 			else{
 				REST.set_response_status(response, REST.status.INTERNAL_SERVER_ERROR);
@@ -119,6 +121,7 @@ static void nodeFoundhandler(void *data, void *response){
 		nodefound = (detecters_t*) data;
 		const uint8_t *data;
 		LOG6LBR_INFO("nodeFoundhandler: %d\n", REST.get_request_payload(response, &data));
+		process_poll(&su_detector);
 	}
 	else{
 		LOG6LBR_INFO("nodeFoundhandler timeout\n");
@@ -187,7 +190,6 @@ static void res_detect_eventhandler(void){
 	}
 }
 
-PROCESS(su_detector, "Sensors Unleashed detector");
 PROCESS_THREAD(su_detector, ev, data)
 {
 	static struct etimer et;
